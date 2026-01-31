@@ -1,7 +1,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# 1. Copy dependency files trước để tận dụng cache
+# 1. Copy dependency files and install
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
@@ -10,14 +10,11 @@ COPY tsconfig.json ./
 COPY src ./src
 
 # 3. Build
-RUN yarn build
+RUN yarn build && ls -R dist || exit 1
 
-# Debug safeguard (có thể xoá sau)
+# Debug safeguard
 RUN ls -la dist
 
-# =====================
-# Runtime
-# =====================
 FROM node:20-alpine
 WORKDIR /app
 
