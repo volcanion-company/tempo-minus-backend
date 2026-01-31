@@ -1,40 +1,32 @@
 FROM node:20-alpine AS builder
-
 WORKDIR /app
 
-# Copy package files
+# 1. Copy dependency files trước để tận dụng cache
 COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
-# Enable corepack and install dependencies
-RUN corepack enable && yarn install --frozen-lockfile
+# 2. Copy SOURCE CODE + tsconfig
+COPY tsconfig.json ./
+COPY src ./src
 
-# Copy source code
-COPY . .
-
-# Build TypeScript
+# 3. Build
 RUN yarn build
 
-# Production image
-FROM node:20-alpine AS runner
+# Debug safeguard (có thể xoá sau)
+RUN ls -la dist
 
+# =====================
+# Runtime
+# =====================
+FROM node:20-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy built files and dependencies
+# 4. Copy dist + node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
+COPY package.json ./
 
-# Create logs directory
-RUN mkdir -p logs
-
-# Expose port
 EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/v1/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Start server
-CMD ["yarn", "start"]
+CMD ["node", "dist/server.js"]

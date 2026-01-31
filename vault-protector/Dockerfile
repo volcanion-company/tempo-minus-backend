@@ -1,54 +1,32 @@
-# ============ Build Stage ============
 FROM node:20-alpine AS builder
-
-# Install dependencies for native modules
-RUN apk add --no-cache python3 make g++
-
 WORKDIR /app
 
-# Copy package files
+# 1. Copy dependency files trước để tận dụng cache
 COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 
-# Install all dependencies (including devDependencies for build)
-RUN corepack enable && yarn install --frozen-lockfile
-
-# Copy source code
+# 2. Copy SOURCE CODE + tsconfig
 COPY tsconfig.json ./
 COPY src ./src
 
-# Build TypeScript
+# 3. Build
 RUN yarn build
 
-# ============ Production Stage ============
-FROM node:20-alpine AS production
+# Debug safeguard (có thể xoá sau)
+RUN ls -la dist
 
-# Security: Don't run as root
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
+# =====================
+# Runtime
+# =====================
+FROM node:20-alpine
 WORKDIR /app
 
-# Copy package files
-COPY package.json yarn.lock ./
+ENV NODE_ENV=production
 
-# Install only production dependencies
-RUN corepack enable && yarn install --production --frozen-lockfile
-
-# Copy built files from builder stage
+# 4. Copy dist + node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json ./
 
-# Set ownership
-RUN chown -R nodejs:nodejs /app
-
-# Switch to non-root user
-USER nodejs
-
-# Expose port
 EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
-
-# Start server
-CMD ["yarn", "start"]
+CMD ["node", "dist/server.js"]
