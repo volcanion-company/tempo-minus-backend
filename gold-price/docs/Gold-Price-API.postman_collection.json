@@ -1,0 +1,631 @@
+{
+  "info": {
+    "_postman_id": "gold-price-api-collection",
+    "name": "Gold Price API",
+    "description": "API collection for Gold Price Backend System\n\nBase URL: http://192.168.10.126:3000\n\n## Authentication\nMost endpoints require Bearer token authentication. Use the Login endpoint to get access token, then set it in the collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "health"]
+            },
+            "description": "Get detailed system health status including MongoDB, Redis, memory usage, and WebSocket connections."
+          },
+          "response": []
+        },
+        {
+          "name": "Liveness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/health/live",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "health", "live"]
+            },
+            "description": "Kubernetes/Docker liveness probe - returns 200 if server is alive."
+          },
+          "response": []
+        },
+        {
+          "name": "Readiness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/health/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "health", "ready"]
+            },
+            "description": "Kubernetes/Docker readiness probe - returns 200 if MongoDB and Redis are connected."
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check endpoints for monitoring system status."
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.tokens) {",
+                  "        pm.collectionVariables.set('accessToken', jsonData.data.tokens.accessToken);",
+                  "        pm.collectionVariables.set('refreshToken', jsonData.data.tokens.refreshToken);",
+                  "        console.log('Tokens saved to collection variables');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Nguyen Van A\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "register"]
+            },
+            "description": "Register a new user account. Tokens will be automatically saved to collection variables."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.tokens) {",
+                  "        pm.collectionVariables.set('accessToken', jsonData.data.tokens.accessToken);",
+                  "        pm.collectionVariables.set('refreshToken', jsonData.data.tokens.refreshToken);",
+                  "        console.log('Tokens saved to collection variables');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "login"]
+            },
+            "description": "Login with email and password. Tokens will be automatically saved to collection variables."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.accessToken) {",
+                  "        pm.collectionVariables.set('accessToken', jsonData.data.accessToken);",
+                  "        console.log('Access token refreshed');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "me"]
+            },
+            "description": "Get current authenticated user's profile."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "profile"]
+            },
+            "description": "Update user profile (name, avatar, preferences)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (Full)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nguyen Van A\",\n  \"avatar\": \"https://example.com/avatar.jpg\",\n  \"preferences\": {\n    \"language\": \"en\",\n    \"currency\": \"USD\",\n    \"darkMode\": true,\n    \"notifications\": {\n      \"push\": true,\n      \"email\": false\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "profile"]
+            },
+            "description": "Update full user profile with all available fields."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newPassword456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "password"]
+            },
+            "description": "Change user password. Requires current password for verification."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "me"]
+            },
+            "description": "Delete current user's account permanently."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints for user management.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{accessToken}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Prices",
+      "item": [
+        {
+          "name": "Get All Prices",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices"]
+            },
+            "description": "Get all current gold prices."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Prices (VND)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices?currency=VND",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices"],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "VND"
+                }
+              ]
+            },
+            "description": "Get all gold prices in VND currency."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Prices (USD)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices?currency=USD",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices"],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "USD"
+                }
+              ]
+            },
+            "description": "Get all gold prices in USD currency."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Price by Code",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices/SJC",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices", "SJC"]
+            },
+            "description": "Get price for a specific gold type by code (e.g., SJC, PNJ, DOJI)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Price History",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices/SJC/history?period=day&limit=7",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices", "SJC", "history"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "day",
+                  "description": "Granularity: minute, hour, day, week, month"
+                },
+                {
+                  "key": "limit",
+                  "value": "7",
+                  "description": "Number of records (max: 1000)"
+                }
+              ]
+            },
+            "description": "Get price history for a specific gold type."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Price History (Date Range)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices/SJC/history?period=hour&from=2026-01-25T00:00:00.000Z&to=2026-01-30T23:59:59.000Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices", "SJC", "history"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "hour"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-01-25T00:00:00.000Z"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-01-30T23:59:59.000Z"
+                }
+              ]
+            },
+            "description": "Get price history for a specific date range."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Price Statistics",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices/SJC/statistics?days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices", "SJC", "statistics"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30",
+                  "description": "Number of days for statistics"
+                }
+              ]
+            },
+            "description": "Get price statistics (min, max, avg, change) for a gold type."
+          },
+          "response": []
+        },
+        {
+          "name": "Compare Prices",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices/compare?codes=SJC,PNJ,DOJI",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices", "compare"],
+              "query": [
+                {
+                  "key": "codes",
+                  "value": "SJC,PNJ,DOJI",
+                  "description": "Comma-separated list of gold codes"
+                }
+              ]
+            },
+            "description": "Compare prices between different gold types."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Prices",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/prices/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "prices", "refresh"]
+            },
+            "description": "Manually trigger a price refresh from external sources."
+          },
+          "response": []
+        }
+      ],
+      "description": "Gold price endpoints."
+    },
+    {
+      "name": "Providers",
+      "item": [
+        {
+          "name": "Get All Providers",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/providers",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "providers"]
+            },
+            "description": "Get list of all gold providers."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Provider by Code",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/providers/SJC",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "providers", "SJC"]
+            },
+            "description": "Get provider information by code."
+          },
+          "response": []
+        }
+      ],
+      "description": "Gold provider endpoints."
+    },
+    {
+      "name": "WebSocket Test",
+      "item": [
+        {
+          "name": "WebSocket Test Page",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test-websocket.html",
+              "host": ["{{baseUrl}}"],
+              "path": ["test-websocket.html"]
+            },
+            "description": "Open this URL in browser to test WebSocket connections."
+          },
+          "response": []
+        }
+      ],
+      "description": "WebSocket testing utilities."
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Log response time",
+          "console.log('Response time: ' + pm.response.responseTime + 'ms');",
+          "",
+          "// Check if response is JSON",
+          "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('application/json')) {",
+          "    pm.test('Response is valid JSON', function () {",
+          "        pm.response.to.be.json;",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ]
+}

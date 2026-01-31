@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Test - Gold Price</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .status {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connected {
+      background: #10b981;
+    }
+
+    .status-dot.disconnected {
+      background: #ef4444;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .controls {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .controls button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-right: 10px;
+      transition: background 0.3s;
+    }
+
+    .controls button:hover {
+      background: #5568d3;
+    }
+
+    .controls button:active {
+      transform: scale(0.98);
+    }
+
+    .logs {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 5px;
+      border-left: 3px solid #64748b;
+      padding-left: 10px;
+    }
+
+    .log-entry.info {
+      border-left-color: #3b82f6;
+    }
+
+    .log-entry.success {
+      border-left-color: #10b981;
+    }
+
+    .log-entry.error {
+      border-left-color: #ef4444;
+    }
+
+    .log-time {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    .prices-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .price-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: all 0.3s;
+    }
+
+    .price-card.updated {
+      animation: highlight 2s;
+    }
+
+    @keyframes highlight {
+      0% { background: #fbbf24; transform: scale(1.05); }
+      100% { background: white; transform: scale(1); }
+    }
+
+    .price-card h3 {
+      color: #1e293b;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .price-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      padding: 8px;
+      background: #f1f5f9;
+      border-radius: 5px;
+    }
+
+    .price-label {
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .price-value {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .price-change {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+
+    .price-change.positive {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .price-change.negative {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .timestamp {
+      color: #94a3b8;
+      font-size: 12px;
+      text-align: right;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 WebSocket Real-time Test</h1>
+    
+    <div class="status">
+      <div class="status-indicator">
+        <div id="statusDot" class="status-dot disconnected"></div>
+        <span id="statusText">Disconnected</span>
+      </div>
+      <div>
+        <span id="socketId">-</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button onclick="requestPrices()">🔄 Get Current Prices</button>
+      <button onclick="subscribeSJC()">⭐ Subscribe to SJC</button>
+      <button onclick="unsubscribeSJC()">❌ Unsubscribe SJC</button>
+      <button onclick="clearLogs()">🗑️ Clear Logs</button>
+    </div>
+
+    <div class="logs" id="logs">
+      <div class="log-entry info">
+        <span class="log-time">[00:00:00]</span> Waiting for connection...
+      </div>
+    </div>
+
+    <div class="prices-grid" id="pricesGrid"></div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script>
+    let socket;
+    const recentlyUpdated = new Set();
+
+    function log(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const time = new Date().toLocaleTimeString('vi-VN');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+      logs.appendChild(entry);
+      logs.scrollTop = logs.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+      log('Logs cleared', 'info');
+    }
+
+    function updateStatus(connected, socketId = '-') {
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      const socketIdEl = document.getElementById('socketId');
+
+      if (connected) {
+        statusDot.className = 'status-dot connected';
+        statusText.textContent = 'Connected';
+        statusText.style.color = '#10b981';
+        socketIdEl.textContent = `Socket: ${socketId}`;
+      } else {
+        statusDot.className = 'status-dot disconnected';
+        statusText.textContent = 'Disconnected';
+        statusText.style.color = '#ef4444';
+        socketIdEl.textContent = '-';
+      }
+    }
+
+    function formatPrice(price) {
+      return new Intl.NumberFormat('vi-VN').format(price);
+    }
+
+    function formatChange(change) {
+      const sign = change >= 0 ? '+' : '';
+      return `${sign}${formatPrice(change)}`;
+    }
+
+    function renderPrices(prices) {
+      const grid = document.getElementById('pricesGrid');
+      grid.innerHTML = '';
+
+      prices.forEach(price => {
+        const card = document.createElement('div');
+        card.className = 'price-card';
+        card.id = `price-${price.code}`;
+        
+        if (recentlyUpdated.has(price.code)) {
+          card.classList.add('updated');
+        }
+
+        const changeBuyClass = price.changeBuy >= 0 ? 'positive' : 'negative';
+        const changeSellClass = price.changeSell >= 0 ? 'positive' : 'negative';
+
+        card.innerHTML = `
+          <h3>${price.name || price.code}</h3>
+          <div class="price-row">
+            <span class="price-label">Mua vào:</span>
+            <div>
+              <span class="price-value">₫${formatPrice(price.buy)}</span>
+              <span class="price-change ${changeBuyClass}">${formatChange(price.changeBuy)}</span>
+            </div>
+          </div>
+          <div class="price-row">
+            <span class="price-label">Bán ra:</span>
+            <div>
+              <span class="price-value">₫${formatPrice(price.sell)}</span>
+              <span class="price-change ${changeSellClass}">${formatChange(price.changeSell)}</span>
+            </div>
+          </div>
+          <div class="timestamp">
+            Cập nhật: ${new Date(price.updatedAt).toLocaleString('vi-VN')}
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    function highlightPrice(code) {
+      recentlyUpdated.add(code);
+      const card = document.getElementById(`price-${code}`);
+      if (card) {
+        card.classList.add('updated');
+        setTimeout(() => {
+          card.classList.remove('updated');
+          recentlyUpdated.delete(code);
+        }, 2000);
+      }
+    }
+
+    function requestPrices() {
+      if (socket && socket.connected) {
+        socket.emit('get:prices');
+        log('📤 Requested current prices', 'info');
+      } else {
+        log('❌ Not connected to server', 'error');
+      }
+    }
+
+    function subscribeSJC() {
+      if (socket && socket.connected) {
+        socket.emit('subscribe:gold', ['SJC']);
+        log('⭐ Subscribed to SJC updates', 'success');
+      } else {
+        log('❌ Not connected to server', 'error');
+      }
+    }
+
+    function unsubscribeSJC() {
+      if (socket && socket.connected) {
+        socket.emit('unsubscribe:gold', ['SJC']);
+        log('❌ Unsubscribed from SJC', 'info');
+      } else {
+        log('❌ Not connected to server', 'error');
+      }
+    }
+
+    // Initialize Socket.IO
+    socket = io('http://localhost:3000', {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    socket.on('connect', () => {
+      updateStatus(true, socket.id);
+      log(`✅ Connected to server (ID: ${socket.id})`, 'success');
+    });
+
+    socket.on('disconnect', () => {
+      updateStatus(false);
+      log('❌ Disconnected from server', 'error');
+    });
+
+    socket.on('connect_error', (error) => {
+      log(`❌ Connection error: ${error.message}`, 'error');
+    });
+
+    socket.on('prices:current', (data) => {
+      if (data.success) {
+        log(`📊 Received ${data.data.length} current prices from ${data.source}`, 'success');
+        renderPrices(data.data);
+      } else {
+        log(`❌ Failed to get prices: ${data.message}`, 'error');
+      }
+    });
+
+    socket.on('prices:updated', (data) => {
+      if (data.success) {
+        log(`🔔 Price update: ${data.changes.length} prices changed`, 'success');
+        data.changes.forEach(change => {
+          log(`  → ${change.name}: Mua ₫${formatPrice(change.buy)} | Bán ₫${formatPrice(change.sell)}`, 'info');
+          highlightPrice(change.code);
+        });
+        renderPrices(data.allPrices);
+      }
+    });
+
+    socket.on('price:changed', (data) => {
+      if (data.success) {
+        log(`⚡ Single price update: ${data.data.name || data.data.code}`, 'success');
+        highlightPrice(data.data.code);
+      }
+    });
+
+    socket.on('prices:error', (data) => {
+      log(`❌ Error: ${data.message}`, 'error');
+    });
+
+    // Auto-request prices on load
+    socket.on('connect', () => {
+      setTimeout(() => {
+        requestPrices();
+      }, 500);
+    });
+  </script>
+</body>
+</html>
