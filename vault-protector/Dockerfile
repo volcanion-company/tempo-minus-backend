@@ -7,17 +7,17 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json yarn.lock ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci
+RUN corepack enable && yarn install --frozen-lockfile
 
 # Copy source code
 COPY tsconfig.json ./
 COPY src ./src
 
 # Build TypeScript
-RUN npm run build
+RUN yarn build
 
 # ============ Production Stage ============
 FROM node:20-alpine AS production
@@ -29,10 +29,10 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json yarn.lock ./
 
 # Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN corepack enable && yarn install --production --frozen-lockfile
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
